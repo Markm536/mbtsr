@@ -9,6 +9,8 @@ __pycache__/
 # My ignores
 Task for Mark Mirgaleev.pptx
 REFS.md
+imgs
+results
 
 # Distribution / packaging
 .Python
