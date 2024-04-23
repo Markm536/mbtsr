@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+# My ignores
+Task for Mark Mirgaleev.pptx
+REFS.md
+
 # Distribution / packaging
 .Python
 build/
