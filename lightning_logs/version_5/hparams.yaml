@@ -1,0 +1,5 @@
+learning_rate: 0.001
+optimizer: adam
+regularization: 0.0005
+sheduler_factor: 0.2
+sheduler_patience: 3
