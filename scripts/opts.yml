@@ -1,0 +1,51 @@
+scaling_factor : 2
+crop_size : 256
+use_residual: false
+is_simple: false
+
+down_params:
+  large_kernel_size : 5
+  small_kernel_size : 3
+  n_channels : 128
+  n_blocks : 8
+
+codec_params:
+  quality: 4
+  metric: 'mse'
+
+res_codec_params:
+  quality: 4
+  metric: 'mse'
+
+gen_params:
+  large_kernel_size : 5
+  small_kernel_size : 3
+  n_channels : 128
+  n_blocks : 36
+
+disc_params:
+  kernel_size : 3
+  n_channels : 64
+  n_blocks : 6
+  fc_size : 512
+
+vgg_params:
+  i: 4
+  j: 4
+
+# Learning parameters
+lr_params:
+  logs_dir : "./runs"
+  n_rows_show : 6
+  batch_size : 12  
+  workers : 16  
+  epoches : 1000
+
+  sheduler_patience : 5
+  sheduler_factor : 0.2
+
+  # ESRGAN 0.01 0.005 1
+  l_mse : 0.5
+  l_adv : 0.0
+  l_vgg : 0.0
+  l_mse_part : 0.5

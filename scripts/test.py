@@ -1,40 +1,77 @@
 from model.enc_dec import setup_codec
-from utils.data import ImagesDataloader, human_order, tomat, topil, cv2pil
+from utils.data import ImagesDataloader #, tomat, topil, cv2pil
 from torch.utils.data import DataLoader
 import cv2
 from pathlib import Path
 from PIL import Image
 
+from model.pl_module import TrainingModule 
+from utils.data import ImagesDataloader, convert_image
+import torch
+import pytorch_lightning as pl
+import yaml
+import argparse
+from glob import glob
+import json
+
 save_format = "img%03d"
 
-def main():
+# python -m compressai.utils.find_close jpeg ~/picture.png 35 --metric psnr --save
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+test_path = "../data/test"
+
+def test_run(ckpt_path, opts_path, test_path):
+    model_path = Path(ckpt_path)
     
-    in_path = '/home/markm536/Huawei/mbtsr/imgs/test'
-    out_path = Path('/home/markm536/Huawei/mbtsr/results')
+    model = TrainingModule.load_from_checkpoint(
+        checkpoint_path=model_path,
+        map_location=device,
+    )
+    
+    trainer = pl.Trainer(accelerator="gpu",
+            devices=[0],)
+    test_dataloader = DataLoader(ImagesDataloader(test_path), batch_size=1, shuffle=False, num_workers=8, pin_memory=True)
+    res = trainer.test(model, test_dataloader)
+    res_ex = model.test_dict
+    res_ex.update(res)
+    res_ex.update({'psnr_mean' : torch.tensor(res_ex['psnr']).mean().item(), 'bpp_mean' : torch.tensor(res_ex['bpp']).mean().item()})
 
-    model = setup_codec()
-    dataloader = ImagesDataloader(in_path)
-    train_dataloader = DataLoader(dataloader, batch_size=1, shuffle=True, num_workers=1, pin_memory=False)
-
-    for i, img in enumerate(train_dataloader):
-        enc_res = model.compress(img)
-        dec_res = model.decompress(**enc_res)['x_hat'].squeeze(0).detach()
-
-        # img = img.squeeze(0)
-        img, dec_res = human_order(img), human_order(dec_res)
-
-        im_gt   = topil(img)
-        im_dist = topil(dec_res)
-        # print(im_gt.max(), im_gt.mean(), im_gt.min(), im_dist.max(), im_dist.mean(), im_dist.min())
-        # print(im_gt.shape, im_dist.shape)
-
-        im_gt.save(out_path / f"{save_format % i}_gt.png")
-        im_dist.save(out_path / f"{save_format % i}_dist.png")
+    test_path = f"{test_path}/kodim04.png"
+    x = Image.open(test_path)
+    x = convert_image(x, 'pil', '[-1, 1]').unsqueeze(0)
+    
+    if model.use_residual:
+        y, _ = model(x)
+    else:
+        y = model(x)
+        
+    y = convert_image(y.squeeze(0), '[-1, 1]', 'pil')
+    y.save(f"{model_path.parent}/pic.png")
+    return res_ex
 
         # sbs = cv2.hconcat([im_dist, im_gt])
         # cv2.imwrite(str(out_path / f"{save_format % i}_gt.png"), im_gt) 
         # cv2.imwrite(str(out_path / f"{save_format % i}_dist.png"), im_dist) 
 
+def parse_arguments():
+
+    parser = argparse.ArgumentParser(description="Train script")
+
+    parser.add_argument('--model_path', type=str, help="Validation folder")
+
+    return parser.parse_args()
+
+def main():
+    args = parse_arguments()
+
+    res = test_run(
+        glob(f"{args.model_path}/epoch=*")[0],
+        f"{args.model_path}/opts.yml",
+        "../data/test",
+    )
+    json.dump(res, open(f"{args.model_path}/res.json", 'w'), indent=4)
 
 
 if __name__ == "__main__":
